@@ -12,18 +12,18 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 builder.Services.AddControllersWithViews();
 
-// Persist DataProtection keys to PostgreSQL — survives container restarts and redeploys
-builder.Services.AddDataProtection()
-    .PersistKeysToDbContext<ExpenseDbContext>()
-    .SetApplicationName("SpendWise");
-
-// PostgreSQL via connection string from env var or appsettings
+// PostgreSQL — must be registered BEFORE DataProtection so the DbContext is available
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("No database connection string found.");
 
 builder.Services.AddDbContext<ExpenseDbContext>(options =>
     options.UseNpgsql(connectionString));
+
+// DataProtection keys stored in Postgres — AFTER DbContext registration
+builder.Services.AddDataProtection()
+    .PersistKeysToDbContext<ExpenseDbContext>()
+    .SetApplicationName("SpendWise");
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
@@ -47,7 +47,7 @@ builder.Services.AddScoped<ExpenseTracker.Services.ExpensePredictionService>();
 
 var app = builder.Build();
 
-// Auto-apply migrations on startup (safe for production with Postgres)
+// Run migrations on startup — creates DataProtectionKeys table if not present
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ExpenseDbContext>();
