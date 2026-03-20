@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: spendwise
+    runtime: dotnet
+    buildCommand: dotnet publish -c Release -o out
+    startCommand: dotnet out/ExpenseTracker.dll
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: DATABASE_URL
+        sync: false   # You will paste your Supabase connection string here in the Render dashboard

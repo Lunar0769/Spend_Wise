@@ -1,0 +1,205 @@
+@model ExpenseTracker.Models.ExpenseFilterViewModel
+@using ExpenseTracker.Models
+@removeTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    ViewData["Title"] = "All Expenses";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var startDateVal = Model.StartDate?.ToString("yyyy-MM-dd") ?? "";
+    var endDateVal   = Model.EndDate?.ToString("yyyy-MM-dd") ?? "";
+
+    var catOptions = new System.Text.StringBuilder();
+    catOptions.Append("<option value=\"\">All Categories</option>");
+    foreach (var c in ExpenseCategories.All)
+    {
+        var sel = (Model.Category == c) ? " selected" : "";
+        catOptions.Append($"<option value=\"{c}\"{sel}>{c}</option>");
+    }
+
+    string SortOrder(string col) => (Model.SortBy == col && Model.SortOrder == "asc") ? "desc" : "asc";
+    string SortArrow(string col) => Model.SortBy == col ? (Model.SortOrder == "asc" ? " ↑" : " ↓") : "";
+}
+
+@section Styles {
+<style>
+    .filter-bar {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px 20px;
+        margin-bottom: 18px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        box-shadow: var(--shadow);
+    }
+    .filter-group { display: flex; flex-direction: column; gap: 5px; }
+    .filter-group label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); font-weight: 600; }
+    .filter-group .form-control { min-width: 140px; }
+    .filter-actions { display: flex; gap: 8px; align-items: flex-end; margin-left: auto; }
+
+    .summary-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+        padding: 0 2px;
+    }
+    .summary-count { font-size: 13px; color: var(--muted); }
+    .summary-total { font-size: 17px; font-weight: 800; color: var(--danger); }
+
+    .sort-link {
+        color: var(--muted);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        transition: color 0.1s;
+        font-size: 10.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .sort-link:hover, .sort-link.active { color: var(--primary); }
+
+    .actions-cell { display: flex; gap: 6px; }
+
+    .delete-btn {
+        background: transparent;
+        border: 1px solid rgba(239,68,68,0.3);
+        color: var(--danger);
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        font-family: 'Inter', sans-serif;
+    }
+    .delete-btn:hover { background: var(--danger-lt); }
+
+    .empty-state { text-align: center; padding: 56px 20px; }
+    .empty-state .icon { font-size: 44px; margin-bottom: 14px; opacity: 0.35; }
+    .empty-state h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .empty-state p { color: var(--muted); font-size: 13px; }
+
+    /* Fit table in viewport */
+    .table-wrapper { max-height: calc(100vh - 280px); overflow-y: auto; }
+    tbody td { padding: 9px 16px; }
+</style>
+}
+
+<form method="get" action="/Expense">
+    <div class="filter-bar">
+        <div class="filter-group">
+            <label>Search</label>
+            <input type="text" name="search" class="form-control" placeholder="Search expenses..." value="@Model.SearchTerm" />
+        </div>
+        <div class="filter-group">
+            <label>Category</label>
+            <select name="category" class="form-control">
+                @Html.Raw(catOptions.ToString())
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>From</label>
+            <input type="date" name="startDate" class="form-control" value="@startDateVal" />
+        </div>
+        <div class="filter-group">
+            <label>To</label>
+            <input type="date" name="endDate" class="form-control" value="@endDateVal" />
+        </div>
+        <input type="hidden" name="sortBy"    value="@Model.SortBy" />
+        <input type="hidden" name="sortOrder" value="@Model.SortOrder" />
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <a href="/Expense" class="btn btn-ghost">Clear</a>
+        </div>
+    </div>
+</form>
+
+<div class="summary-bar">
+    <span class="summary-count">
+        @Model.Expenses.Count expense@(Model.Expenses.Count == 1 ? "" : "s") shown
+        (page @Model.CurrentPage of @(Model.TotalPages == 0 ? 1 : Model.TotalPages))
+    </span>
+    <span class="summary-total">Total: ₹@Model.TotalAmount.ToString("N2")</span>
+</div>
+
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th><a href="@Url.Action("Index", new { sortBy="Title",    sortOrder=SortOrder("Title"),    category=Model.Category, search=Model.SearchTerm })" class="sort-link @(Model.SortBy=="Title"?"active":"")">Title@(SortArrow("Title"))</a></th>
+                <th><a href="@Url.Action("Index", new { sortBy="Category", sortOrder=SortOrder("Category"), category=Model.Category, search=Model.SearchTerm })" class="sort-link @(Model.SortBy=="Category"?"active":"")">Category@(SortArrow("Category"))</a></th>
+                <th><a href="@Url.Action("Index", new { sortBy="Amount",   sortOrder=SortOrder("Amount"),   category=Model.Category, search=Model.SearchTerm })" class="sort-link @(Model.SortBy=="Amount"?"active":"")">Amount@(SortArrow("Amount"))</a></th>
+                <th><a href="@Url.Action("Index", new { sortBy="Date",     sortOrder=SortOrder("Date"),     category=Model.Category, search=Model.SearchTerm })" class="sort-link @(Model.SortBy=="Date"?"active":"")">Date@(SortArrow("Date"))</a></th>
+                <th>Notes</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Expenses.Any())
+            {
+                <tr>
+                    <td colspan="6">
+                        <div class="empty-state">
+                            <div class="icon">💸</div>
+                            <h3>No expenses found</h3>
+                            <p>Try adjusting your filters or <a href="/Expense/Create" style="color:var(--primary)">add a new expense</a>.</p>
+                        </div>
+                    </td>
+                </tr>
+            }
+            else
+            {
+                foreach (var expense in Model.Expenses)
+                {
+                    var notes = expense.Notes != null
+                        ? (expense.Notes.Length > 35 ? expense.Notes.Substring(0, 35) + "…" : expense.Notes)
+                        : "—";
+                    <tr>
+                        <td><span style="font-weight:500">@expense.Title</span></td>
+                        <td>
+                            <span class="badge">
+                                @ExpenseCategories.GetIcon(expense.Category)
+                                @expense.Category
+                            </span>
+                        </td>
+                        <td><span class="amount negative">-₹@expense.Amount.ToString("N2")</span></td>
+                        <td><span style="color:var(--muted);font-size:13px">@expense.Date.ToString("MMM d, yyyy")</span></td>
+                        <td><span style="color:var(--muted);font-size:12px">@notes</span></td>
+                        <td>
+                            <div class="actions-cell">
+                                <a href="/Expense/Edit/@expense.Id" class="btn btn-ghost btn-sm">Edit</a>
+                                <form method="post" action="/Expense/Delete/@expense.Id" style="display:inline"
+                                      onsubmit="return confirm('Delete this expense?')">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="delete-btn">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (Model.TotalPages > 1)
+{
+    <div class="pagination">
+        <a href="@Url.Action("Index", new { page=Model.CurrentPage-1, category=Model.Category, search=Model.SearchTerm, sortBy=Model.SortBy, sortOrder=Model.SortOrder })"
+           class="page-btn @(Model.CurrentPage==1 ? "disabled" : "")">← Prev</a>
+
+        @for (int i = Math.Max(1, Model.CurrentPage-2); i <= Math.Min(Model.TotalPages, Model.CurrentPage+2); i++)
+        {
+            <a href="@Url.Action("Index", new { page=i, category=Model.Category, search=Model.SearchTerm, sortBy=Model.SortBy, sortOrder=Model.SortOrder })"
+               class="page-btn @(i==Model.CurrentPage ? "active" : "")">@i</a>
+        }
+
+        <a href="@Url.Action("Index", new { page=Model.CurrentPage+1, category=Model.Category, search=Model.SearchTerm, sortBy=Model.SortBy, sortOrder=Model.SortOrder })"
+           class="page-btn @(Model.CurrentPage==Model.TotalPages ? "disabled" : "")">Next →</a>
+    </div>
+}

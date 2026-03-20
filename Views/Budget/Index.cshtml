@@ -1,0 +1,92 @@
+@model ExpenseTracker.Models.Budget
+@{
+    ViewData["Title"] = "Budget & Income";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Styles {
+<style>
+    .budget-wrap { max-width: 520px; margin: 0 auto; }
+    .budget-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px 32px; box-shadow: var(--shadow-md); }
+    .budget-card h2 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+    .budget-card p  { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+    .range-row { display: flex; align-items: center; gap: 12px; }
+    .range-row input[type=range] { flex: 1; accent-color: var(--primary); }
+    .range-val { font-size: 15px; font-weight: 700; color: var(--primary); min-width: 42px; text-align: right; }
+    .preview-box { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; margin-top: 20px; font-size: 13px; }
+    .preview-row { display: flex; justify-content: space-between; padding: 4px 0; }
+    .preview-row span:last-child { font-weight: 700; }
+    .preview-row.threshold span:last-child { color: var(--warning); }
+    .preview-row.safe span:last-child { color: var(--success); }
+</style>
+}
+
+<div class="budget-wrap">
+    <div class="budget-card">
+        <h2>💰 Income & Spending Threshold</h2>
+        <p>Set your monthly income and the percentage at which you want to be warned about overspending.</p>
+
+        <form asp-action="Save" method="post">
+            @Html.AntiForgeryToken()
+
+            <div class="form-group">
+                <label class="form-label" for="MonthlyIncome">Monthly Income (₹)</label>
+                <input class="form-control @(ViewData.ModelState["MonthlyIncome"]?.Errors.Any() == true ? "is-invalid" : "")"
+                       type="number" id="MonthlyIncome" name="MonthlyIncome"
+                       value="@Model.MonthlyIncome" min="1" step="0.01" placeholder="e.g. 50000" />
+                <span asp-validation-for="MonthlyIncome" class="field-validation-error"></span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Spending Threshold — <span id="thresholdLabel">@Model.ThresholdPercent%</span></label>
+                <div class="range-row">
+                    <input type="range" id="ThresholdRange" name="ThresholdPercent"
+                           min="1" max="100" value="@Model.ThresholdPercent"
+                           oninput="updateThreshold(this.value)" />
+                    <span class="range-val" id="rangeVal">@Model.ThresholdPercent%</span>
+                </div>
+                <span asp-validation-for="ThresholdPercent" class="field-validation-error"></span>
+            </div>
+
+            <div class="preview-box" id="previewBox">
+                <div class="preview-row"><span>Monthly Income</span><span id="prevIncome">₹@Model.MonthlyIncome.ToString("N2")</span></div>
+                <div class="preview-row threshold"><span>Threshold (@Model.ThresholdPercent%)</span><span id="prevThreshold">₹@Model.ThresholdAmount.ToString("N2")</span></div>
+                <div class="preview-row safe"><span>Safe Buffer</span><span id="prevBuffer">₹@((Model.MonthlyIncome - Model.ThresholdAmount).ToString("N2"))</span></div>
+            </div>
+
+            <div style="margin-top:24px;display:flex;gap:10px">
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+                <a href="/" class="btn btn-ghost">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const incomeInput = document.getElementById('MonthlyIncome');
+    const rangeInput  = document.getElementById('ThresholdRange');
+
+    function fmt(n) {
+        return '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function updateThreshold(val) {
+        document.getElementById('thresholdLabel').textContent = val + '%';
+        document.getElementById('rangeVal').textContent = val + '%';
+        recalc();
+    }
+
+    function recalc() {
+        const income = parseFloat(incomeInput.value) || 0;
+        const pct    = parseInt(rangeInput.value) || 80;
+        const thresh = income * pct / 100;
+        const buffer = income - thresh;
+        document.getElementById('prevIncome').textContent    = fmt(income);
+        document.getElementById('prevThreshold').textContent = fmt(thresh);
+        document.getElementById('prevBuffer').textContent    = fmt(buffer);
+    }
+
+    incomeInput.addEventListener('input', recalc);
+</script>
+}

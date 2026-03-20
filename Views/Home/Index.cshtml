@@ -1,0 +1,396 @@
+@model ExpenseTracker.Models.DashboardViewModel
+@using ExpenseTracker.Models
+@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var monthLabels  = string.Join(",", Model.MonthlyTotals.Select(m => $"\"{m.Month}\""));
+    var monthAmounts = string.Join(",", Model.MonthlyTotals.Select(m => ((double)m.Amount).ToString("F2", System.Globalization.CultureInfo.InvariantCulture)));
+    var catLabels    = string.Join(",", Model.CategoryTotals.Keys.Select(k => $"\"{k}\""));
+    var catAmounts   = string.Join(",", Model.CategoryTotals.Values.Select(v => ((double)v).ToString("F2", System.Globalization.CultureInfo.InvariantCulture)));
+    var catColors    = string.Join(",", Model.CategoryTotals.Keys.Select(k => $"\"{ExpenseCategories.GetColor(k)}\""));
+}
+
+@section Styles {
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+    .stat-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px 16px;
+        box-shadow: var(--shadow);
+        position: relative;
+        overflow: hidden;
+    }
+    .stat-card::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: var(--accent-color, var(--primary));
+        border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .stat-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; }
+    .stat-value { font-size: 22px; font-weight: 800; line-height: 1; margin-bottom: 4px; color: var(--text); }
+    .stat-sub   { font-size: 11px; color: var(--muted); }
+    .charts-grid { display: grid; grid-template-columns: 1fr 300px; gap: 12px; margin-bottom: 12px; }
+    .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+    .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .chart-title { font-size: 13px; font-weight: 700; color: var(--text); }
+    .chart-sub   { font-size: 11px; color: var(--muted); }
+    .bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .recent-item { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+    .recent-item:last-child { border-bottom: none; }
+    .recent-icon { width: 30px; height: 30px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+    .recent-info { flex: 1; min-width: 0; }
+    .recent-title  { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .recent-meta   { font-size: 10px; color: var(--muted); margin-top: 1px; }
+    .recent-amount { font-weight: 700; font-size: 12px; color: var(--danger); white-space: nowrap; }
+    .category-item { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+    .cat-name { flex: 1; font-size: 12px; color: var(--text2); }
+    .cat-bar-wrap { width: 60px; background: var(--surface2); border-radius: 4px; height: 4px; overflow: hidden; flex-shrink: 0; }
+    .cat-bar { height: 100%; border-radius: 4px; }
+    .cat-amount { font-size: 12px; font-weight: 700; color: var(--text); min-width: 56px; text-align: right; }
+    /* Forecast */
+    .forecast-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); margin-top: 12px; }
+    /* Budget bar */
+    .budget-bar-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; box-shadow: var(--shadow); margin-bottom: 12px; }
+    .budget-bar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 6px; }
+    .budget-bar-title { font-size: 13px; font-weight: 700; color: var(--text); }
+    .budget-bar-meta  { font-size: 11px; color: var(--muted); }
+    .budget-track { background: var(--surface2); border-radius: 8px; height: 10px; overflow: hidden; margin-bottom: 8px; }
+    .budget-fill  { height: 100%; border-radius: 8px; transition: width 0.4s ease; }
+    .budget-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+    .budget-labels strong { color: var(--text); }
+    .budget-alert { margin-top: 8px; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: var(--radius-sm); }
+    .budget-alert.warn  { background: rgba(245,158,11,0.12); color: var(--warning); border: 1px solid rgba(245,158,11,0.25); }
+    .budget-alert.over  { background: var(--danger-lt); color: var(--danger); border: 1px solid rgba(239,68,68,0.25); }
+    .budget-alert.safe  { background: rgba(34,197,94,0.1); color: var(--success); border: 1px solid rgba(34,197,94,0.25); }
+    .forecast-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+    .forecast-title { font-size: 13px; font-weight: 700; color: var(--text); }
+    .forecast-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; background: var(--primary-lt); color: var(--primary); border: 1px solid rgba(79,70,229,0.2); }
+    .forecast-body { display: grid; grid-template-columns: 1fr 240px; gap: 16px; align-items: start; }
+    .forecast-list { list-style: none; }
+    .forecast-list li { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+    .forecast-list li:last-child { border-bottom: none; }
+    .f-left { display: flex; align-items: center; gap: 6px; }
+    .f-month  { color: var(--text2); font-weight: 500; }
+    .f-amount { font-weight: 700; color: var(--text); }
+    .f-predicted .f-month  { color: var(--primary); }
+    .f-predicted .f-amount { color: var(--primary); }
+    .f-tag { font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 10px; background: var(--primary-lt); color: var(--primary); }
+    .forecast-error { text-align: center; padding: 20px; color: var(--muted); font-size: 13px; }
+    @@media (max-width: 1100px) {
+        .stats-grid  { grid-template-columns: repeat(2, 1fr); }
+        .charts-grid { grid-template-columns: 1fr; }
+        .bottom-grid { grid-template-columns: 1fr; }
+        .forecast-body { grid-template-columns: 1fr; }
+    }
+</style>
+}
+
+<div class="stats-grid">
+    <div class="stat-card" style="--accent-color: var(--primary)">
+        <div class="stat-label">This Month</div>
+        <div class="stat-value">₹@Model.TotalThisMonth.ToString("N0")</div>
+        <div class="stat-sub">@DateTime.Now.ToString("MMMM yyyy")</div>
+    </div>
+    <div class="stat-card" style="--accent-color: #7C3AED">
+        <div class="stat-label">This Year</div>
+        <div class="stat-value">₹@Model.TotalThisYear.ToString("N0")</div>
+        <div class="stat-sub">@DateTime.Now.Year total</div>
+    </div>
+    <div class="stat-card" style="--accent-color: var(--warning)">
+        <div class="stat-label">Daily Average</div>
+        <div class="stat-value">₹@Model.AverageDailyThisMonth.ToString("N0")</div>
+        <div class="stat-sub">per day this month</div>
+    </div>
+    <div class="stat-card" style="--accent-color: var(--success)">
+        <div class="stat-label">Transactions</div>
+        <div class="stat-value">@Model.TotalTransactions</div>
+        <div class="stat-sub">total records</div>
+    </div>
+</div>
+
+@if (Model.Budget != null && Model.Budget.MonthlyIncome > 0)
+{
+    var spent      = Model.TotalThisMonth;
+    var income     = Model.Budget.MonthlyIncome;
+    var threshold  = Model.Budget.ThresholdAmount;
+    var pct        = income > 0 ? Math.Min((double)spent / (double)income * 100, 100) : 0;
+    var pctStr     = pct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+    var remaining  = income - spent;
+    var barColor   = spent >= income ? "var(--danger)" : spent >= threshold ? "var(--warning)" : "var(--success)";
+
+    <div class="budget-bar-card">
+        <div class="budget-bar-header">
+            <span class="budget-bar-title">💳 Monthly Budget</span>
+            <span class="budget-bar-meta">
+                Threshold: ₹@threshold.ToString("N0") (@Model.Budget.ThresholdPercent% of ₹@income.ToString("N0"))
+                &nbsp;·&nbsp; <a href="/Budget" style="color:var(--primary);font-size:11px">Edit</a>
+            </span>
+        </div>
+        <div class="budget-track">
+            <div class="budget-fill" style="width:@(pctStr)%;background:@barColor"></div>
+        </div>
+        <div class="budget-labels">
+            <span>Spent: <strong>₹@spent.ToString("N0")</strong></span>
+            <span>@pctStr% used</span>
+            <span>Balance: <strong>₹@remaining.ToString("N0")</strong></span>
+        </div>
+        @if (spent >= income)
+        {
+            <div class="budget-alert over">🚨 Over budget! You've exceeded your monthly income by ₹@((spent - income).ToString("N0")).</div>
+        }
+        else if (spent >= threshold)
+        {
+            <div class="budget-alert warn">⚠️ Approaching limit — you've used @pctStr% of your income. Only ₹@remaining.ToString("N0") left.</div>
+        }
+        else
+        {
+            <div class="budget-alert safe">✅ On track — ₹@remaining.ToString("N0") remaining this month.</div>
+        }
+    </div>
+}
+else
+{
+    <div class="budget-bar-card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <span style="font-size:13px;color:var(--muted)">💡 Set your monthly income to track your budget threshold.</span>
+        <a href="/Budget" class="btn btn-primary btn-sm">Set Budget</a>
+    </div>
+}
+
+<div class="charts-grid">
+    <div class="chart-card">
+        <div class="chart-header">
+            <span class="chart-title">Monthly Spending</span>
+            <span class="chart-sub">Last 6 months</span>
+        </div>
+        <canvas id="monthlyChart" height="110"></canvas>
+    </div>
+    <div class="chart-card">
+        <div class="chart-header">
+            <span class="chart-title">By Category</span>
+            <span class="chart-sub">This month</span>
+        </div>
+        <canvas id="categoryChart" height="170"></canvas>
+    </div>
+</div>
+
+<div class="bottom-grid">
+    <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="card-title" style="margin-bottom:0">Recent Expenses</div>
+            <a href="/Expense" class="btn btn-ghost btn-sm">View all →</a>
+        </div>
+        @if (!Model.RecentExpenses.Any())
+        {
+            <p style="color:var(--muted);font-size:13px;text-align:center;padding:24px 0">No expenses yet.</p>
+        }
+        @foreach (var expense in Model.RecentExpenses)
+        {
+            <div class="recent-item">
+                <div class="recent-icon">@ExpenseCategories.GetIcon(expense.Category)</div>
+                <div class="recent-info">
+                    <div class="recent-title">@expense.Title</div>
+                    <div class="recent-meta">@expense.Category · @expense.Date.ToString("MMM d")</div>
+                </div>
+                <div class="recent-amount">-₹@expense.Amount.ToString("N2")</div>
+            </div>
+        }
+    </div>
+
+    <div class="card">
+        <div class="card-title">Top Categories</div>
+        @{
+            var maxCat = Model.CategoryTotals.Values.Any() ? Model.CategoryTotals.Values.Max() : 1m;
+        }
+        @foreach (var kv in Model.CategoryTotals.OrderByDescending(x => x.Value).Take(7))
+        {
+            var pct    = maxCat > 0 ? (double)kv.Value / (double)maxCat * 100 : 0;
+            var pctStr = pct.ToString("F0", System.Globalization.CultureInfo.InvariantCulture);
+            <div class="category-item">
+                <span style="font-size:15px">@ExpenseCategories.GetIcon(kv.Key)</span>
+                <span class="cat-name">@kv.Key</span>
+                <div class="cat-bar-wrap">
+                    <div class="cat-bar" style="width:@(pctStr)%;background:@ExpenseCategories.GetColor(kv.Key)"></div>
+                </div>
+                <span class="cat-amount">₹@kv.Value.ToString("N0")</span>
+            </div>
+        }
+        @if (!Model.CategoryTotals.Any())
+        {
+            <p style="color:var(--muted);font-size:13px;text-align:center;padding:24px 0">No expenses this month.</p>
+        }
+    </div>
+</div>
+
+<!-- ── Future Expense Forecast ── -->
+<div class="forecast-card">
+    <div class="forecast-header">
+        <span class="forecast-title">📈 Future Expense Forecast</span>
+        <span class="forecast-badge">AI Prediction · Next 3 Months</span>
+    </div>
+    <div id="forecastContent">
+        <div style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Loading forecast...</div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    Chart.defaults.color = '#94A3B8';
+    Chart.defaults.borderColor = '#E2E8F0';
+
+    // ── Monthly bar chart ──
+    new Chart(document.getElementById('monthlyChart'), {
+        type: 'bar',
+        data: {
+            labels: [@Html.Raw(monthLabels)],
+            datasets: [{
+                data: [@Html.Raw(monthAmounts)],
+                backgroundColor: 'rgba(79,70,229,0.75)',
+                hoverBackgroundColor: 'rgba(79,70,229,1)',
+                borderRadius: 6,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { grid: { color: '#F1F5F9' }, ticks: { callback: v => '₹' + v.toLocaleString() } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+
+    @if (Model.CategoryTotals.Any())
+    {
+        <text>
+    // ── Category doughnut ──
+    new Chart(document.getElementById('categoryChart'), {
+        type: 'doughnut',
+        data: {
+            labels: [@Html.Raw(catLabels)],
+            datasets: [{
+                data: [@Html.Raw(catAmounts)],
+                backgroundColor: [@Html.Raw(catColors)],
+                borderWidth: 2,
+                borderColor: '#fff',
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            cutout: '70%',
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 10, padding: 10, font: { size: 11 } } }
+            }
+        }
+    });
+        </text>
+    }
+
+    // ── Forecast ──
+    (async function () {
+        const container = document.getElementById('forecastContent');
+        try {
+            const res  = await fetch('/api/forecast-full?months=3');
+            const data = await res.json();
+
+            if (data.error) {
+                container.innerHTML = `<div class="forecast-error">⚠️ ${data.error}</div>`;
+                return;
+            }
+
+            const forecast = data.forecast;
+            const histLabels  = forecast.filter(d => !d.isPredicted).map(d => d.month);
+            const histAmounts = forecast.filter(d => !d.isPredicted).map(d => d.amount);
+            const predLabels  = forecast.filter(d =>  d.isPredicted).map(d => d.month);
+            const predAmounts = forecast.filter(d =>  d.isPredicted).map(d => d.amount);
+
+            // Build list HTML
+            const listItems = forecast.map(d => {
+                const cls = d.isPredicted ? 'f-predicted' : '';
+                const tag = d.isPredicted ? '<span class="f-tag">Predicted</span>' : '';
+                return `<li class="${cls}">
+                    <div class="f-left"><span class="f-month">${d.month}</span>${tag}</div>
+                    <span class="f-amount">₹${Number(d.amount).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
+                </li>`;
+            }).join('');
+
+            // Chart datasets: connect history + prediction with a bridge point
+            const allLabels = forecast.map(d => d.month);
+            const histData  = forecast.map((d, i) => d.isPredicted ? null : d.amount);
+            // Bridge: last historical point repeated as first predicted point
+            const lastHistIdx = forecast.findLastIndex(d => !d.isPredicted);
+            const predData  = forecast.map((d, i) => {
+                if (d.isPredicted) return d.amount;
+                if (i === lastHistIdx) return d.amount; // bridge
+                return null;
+            });
+
+            container.innerHTML = `
+                <div class="forecast-body">
+                    <canvas id="forecastChart" height="130"></canvas>
+                    <ul class="forecast-list">${listItems}</ul>
+                </div>`;
+
+            new Chart(document.getElementById('forecastChart'), {
+                type: 'line',
+                data: {
+                    labels: allLabels,
+                    datasets: [
+                        {
+                            label: 'Past Expenses',
+                            data: histData,
+                            borderColor: 'rgba(79,70,229,1)',
+                            backgroundColor: 'rgba(79,70,229,0.08)',
+                            borderWidth: 2.5,
+                            pointRadius: 4,
+                            pointBackgroundColor: 'rgba(79,70,229,1)',
+                            fill: true,
+                            tension: 0.35,
+                            spanGaps: false
+                        },
+                        {
+                            label: 'Predicted',
+                            data: predData,
+                            borderColor: 'rgba(124,58,237,0.9)',
+                            backgroundColor: 'rgba(124,58,237,0.06)',
+                            borderWidth: 2.5,
+                            borderDash: [6, 4],
+                            pointRadius: 4,
+                            pointBackgroundColor: 'rgba(124,58,237,1)',
+                            fill: true,
+                            tension: 0.35,
+                            spanGaps: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'top', labels: { boxWidth: 12, padding: 14, font: { size: 12 } } },
+                        tooltip: { callbacks: { label: ctx => ' ₹' + ctx.parsed.y.toLocaleString('en-IN', {minimumFractionDigits:2}) } }
+                    },
+                    scales: {
+                        y: { grid: { color: '#F1F5F9' }, ticks: { callback: v => '₹' + v.toLocaleString() } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+        } catch (e) {
+            container.innerHTML = '<div class="forecast-error">Could not load forecast.</div>';
+        }
+    })();
+</script>
+}

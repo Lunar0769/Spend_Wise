@@ -1,0 +1,109 @@
+@model ExpenseTracker.Models.Expense
+@using ExpenseTracker.Models
+@{
+    ViewData["Title"] = "New Expense";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Styles {
+<style>
+    .form-card {
+        max-width: 580px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 30px;
+        box-shadow: var(--shadow-md);
+    }
+    .form-header { margin-bottom: 26px; }
+    .form-header h2 { font-size: 19px; font-weight: 800; color: var(--text); }
+    .form-header p  { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .category-pills { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 4px; }
+    .cat-pill {
+        display: flex; align-items: center; gap: 5px;
+        padding: 6px 12px; border-radius: 8px;
+        background: var(--surface2); border: 1.5px solid var(--border);
+        cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text2);
+        transition: all 0.15s; user-select: none;
+    }
+    .cat-pill:hover { border-color: var(--primary); color: var(--text); }
+    .cat-pill.selected {
+        border-color: var(--primary);
+        background: var(--primary-lt);
+        color: var(--primary);
+        font-weight: 600;
+    }
+    #category-input { display: none; }
+    .form-footer {
+        display: flex; gap: 10px;
+        margin-top: 26px; padding-top: 20px;
+        border-top: 1px solid var(--border);
+    }
+</style>
+}
+
+<div class="form-card">
+    <div class="form-header">
+        <h2>Add New Expense</h2>
+        <p>Fill in the details to track a new expense.</p>
+    </div>
+
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+
+        <div class="form-group">
+            <label asp-for="Title" class="form-label">Expense Title</label>
+            <input asp-for="Title" class="form-control" placeholder="e.g. Lunch at Chipotle" />
+            <span asp-validation-for="Title" class="field-validation-error"></span>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="Amount" class="form-label">Amount (₹)</label>
+                <input asp-for="Amount" class="form-control" type="number" step="0.01" min="0.01" placeholder="0.00" />
+                <span asp-validation-for="Amount" class="field-validation-error"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Date" class="form-label">Date</label>
+                <input asp-for="Date" class="form-control" type="date" />
+                <span asp-validation-for="Date" class="field-validation-error"></span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Category</label>
+            <input asp-for="Category" id="category-input" />
+            <div class="category-pills" id="categoryPills">
+                @foreach (var cat in ExpenseCategories.All)
+                {
+                    <div class="cat-pill @(Model.Category == cat ? "selected" : "")"
+                         onclick="selectCat(this, '@cat')">
+                        @ExpenseCategories.GetIcon(cat) @cat
+                    </div>
+                }
+            </div>
+            <span asp-validation-for="Category" class="field-validation-error"></span>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="Notes" class="form-label">Notes (optional)</label>
+            <textarea asp-for="Notes" class="form-control" placeholder="Any additional details..."></textarea>
+        </div>
+
+        <div class="form-footer">
+            <button type="submit" class="btn btn-primary">➕ Add Expense</button>
+            <a href="/Expense" class="btn btn-ghost">Cancel</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+    function selectCat(el, cat) {
+        document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('selected'));
+        el.classList.add('selected');
+        document.getElementById('category-input').value = cat;
+    }
+</script>
+}
