@@ -67,27 +67,26 @@
         }
 
         .sidebar-logo {
-            padding: 20px 20px 18px;
+            padding: 16px 20px;
             display: flex;
             align-items: center;
-            gap: 10px;
             border-bottom: 1px solid var(--border);
+            min-height: 64px;
         }
 
-        .logo-icon {
-            width: 36px; height: 36px;
-            background: linear-gradient(135deg, var(--primary), #7C3AED);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
+        .logo-img {
+            height: 36px;
+            width: auto;
+            display: block;
             flex-shrink: 0;
         }
 
-        .logo-text { line-height: 1.2; }
-        .logo-text strong { font-size: 15px; font-weight: 700; color: var(--text); display: block; }
-        .logo-text small { font-size: 10px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+        .logo-img-icon {
+            height: 32px;
+            width: 32px;
+            display: none;
+            flex-shrink: 0;
+        }
 
         .nav-section { padding: 16px 12px; flex: 1; }
 
@@ -356,7 +355,8 @@
         /* ── Responsive ── */
         @@media (max-width: 768px) {
             :root { --sidebar-w: 58px; }
-            .sidebar-logo .logo-text,
+            .logo-img       { display: none; }
+            .logo-img-icon  { display: block; }
             .nav-label,
             .nav-item span:not(.icon),
             .sidebar-footer .version { display: none; }
@@ -369,11 +369,10 @@
 <body>
     <nav class="sidebar">
         <div class="sidebar-logo">
-            <div class="logo-icon">💰</div>
-            <div class="logo-text">
-                <strong>SpendWise</strong>
-                <small>Expense Tracker</small>
-            </div>
+            <!-- Full logo — shown on desktop -->
+            <img src="~/images/logo.svg" alt="SpendWise" class="logo-img" />
+            <!-- Icon-only fallback — shown on mobile when sidebar collapses -->
+            <img src="~/images/logo.svg" alt="SpendWise" class="logo-img-icon" />
         </div>
 
         <div class="nav-section">
