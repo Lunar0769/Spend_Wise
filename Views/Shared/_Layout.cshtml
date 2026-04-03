@@ -377,19 +377,19 @@
 
         <div class="nav-section">
             <div class="nav-label">Menu</div>
-            <a href="/Home" class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")">
+            <a asp-controller="Home" asp-action="Index" class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")">
                 <span class="icon">📊</span>
                 <span>Dashboard</span>
             </a>
-            <a href="/Expense" class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Expense" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")">
+            <a asp-controller="Expense" asp-action="Index" class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Expense" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")">
                 <span class="icon">📋</span>
                 <span>All Expenses</span>
             </a>
-            <a href="/Expense/Create" class="nav-item @(ViewContext.RouteData.Values["action"]?.ToString() == "Create" ? "active" : "")">
+            <a asp-controller="Expense" asp-action="Create" class="nav-item @(ViewContext.RouteData.Values["action"]?.ToString() == "Create" ? "active" : "")">
                 <span class="icon">➕</span>
                 <span>Add Expense</span>
             </a>
-            <a href="/Budget" class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Budget" ? "active" : "")">
+            <a asp-controller="Budget" asp-action="Index" class="nav-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Budget" ? "active" : "")">
                 <span class="icon">💳</span>
                 <span>Budget</span>
             </a>
@@ -412,7 +412,7 @@
                         <button type="submit" class="btn btn-ghost btn-sm">Sign Out</button>
                     </form>
                 }
-                <a href="/Expense/Create" class="btn btn-primary">
+                <a asp-controller="Expense" asp-action="Create" class="btn btn-primary">
                     <span>➕</span> New Expense
                 </a>
             </div>
