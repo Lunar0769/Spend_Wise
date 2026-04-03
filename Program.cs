@@ -13,9 +13,18 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 builder.Services.AddControllersWithViews();
 
 // PostgreSQL — must be registered BEFORE DataProtection so the DbContext is available
-var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+var rawConnString = Environment.GetEnvironmentVariable("DATABASE_URL")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("No database connection string found.");
+
+// Convert postgresql:// URI format to Npgsql key=value format
+var connectionString = rawConnString;
+if (rawConnString.StartsWith("postgresql://") || rawConnString.StartsWith("postgres://"))
+{
+    var uri = new Uri(rawConnString);
+    var userInfo = uri.UserInfo.Split(':');
+    connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true;Pooling=false";
+}
 
 builder.Services.AddDbContext<ExpenseDbContext>(options =>
     options.UseNpgsql(connectionString));
