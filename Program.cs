@@ -14,16 +14,27 @@ builder.Services.AddControllersWithViews();
 
 // PostgreSQL — must be registered BEFORE DataProtection so the DbContext is available
 var rawConnString = Environment.GetEnvironmentVariable("DATABASE_URL")
-    ?? builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("No database connection string found.");
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrWhiteSpace(rawConnString))
+    throw new InvalidOperationException("No database connection string found. Set DATABASE_URL environment variable.");
 
 // Convert postgresql:// URI format to Npgsql key=value format
-var connectionString = rawConnString;
+string connectionString;
 if (rawConnString.StartsWith("postgresql://") || rawConnString.StartsWith("postgres://"))
 {
     var uri = new Uri(rawConnString);
-    var userInfo = uri.UserInfo.Split(':');
-    connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true;Pooling=false";
+    var userInfo = uri.UserInfo.Split(':', 2); // limit to 2 parts so passwords with ':' are safe
+    var host = uri.Host;
+    var port2 = uri.Port > 0 ? uri.Port : 5432;
+    var database = uri.AbsolutePath.TrimStart('/');
+    var username = Uri.UnescapeDataString(userInfo[0]);
+    var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+    connectionString = $"Host={host};Port={port2};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Pooling=false";
+}
+else
+{
+    connectionString = rawConnString;
 }
 
 builder.Services.AddDbContext<ExpenseDbContext>(options =>
