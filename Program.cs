@@ -86,6 +86,8 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapMethods("/health", new[] { "GET", "HEAD" }, () => Results.Ok("healthy"));
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Account}/{action=Login}/{id?}");
