@@ -146,14 +146,14 @@
         "On Track"          => $"On track — ₹{Model.RemainingSpendable.ToString("N0")} spendable + ₹{Model.RemainingSavings.ToString("N0")} savings remaining.",
         "Approaching Limit" => $"Approaching spendable limit — ₹{Model.RemainingSpendable.ToString("N0")} left before dipping into savings.",
         "Using Savings"     => $"Using savings — ₹{Model.SavingsUsed.ToString("N0")} taken from savings. ₹{Model.RemainingSavings.ToString("N0")} savings left.",
-        _                   => $"Overspent — savings exhausted. You've exceeded your budget by ₹{(Model.TotalThisMonth - income).ToString("N0")}."
+        _                   => $"Overspent — savings exhausted. You've exceeded your budget by ₹{(Model.TotalThisMonth - Model.SpendableAmount).ToString("N0")}."
     };
 
     <div class="budget-bar-card">
         <div class="budget-bar-header">
             <span class="budget-bar-title">💳 Monthly Budget</span>
             <span class="budget-bar-meta">
-                Threshold: ₹@threshold.ToString("N0") (@Model.Budget.ThresholdPercent% of ₹@income.ToString("N0"))
+                Spendable: ₹@threshold.ToString("N0") (@Model.Budget.ThresholdPercent% of ₹@income.ToString("N0"))
                 &nbsp;·&nbsp; <a asp-controller="Budget" asp-action="Index" style="color:var(--primary);font-size:11px">Edit</a>
             </span>
         </div>

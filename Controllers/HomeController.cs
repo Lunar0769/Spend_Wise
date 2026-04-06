@@ -63,27 +63,29 @@ namespace ExpenseTracker.Controllers
 
             if (budget != null && budget.MonthlyIncome > 0)
             {
-                var threshold = budget.ThresholdAmount; // savings bucket
-                spendableAmount = budget.MonthlyIncome - threshold;
+                var spendable = budget.ThresholdAmount; // threshold = spendable
+                var savings   = budget.MonthlyIncome - spendable; // remainder = savings
 
-                if (totalExpenses <= spendableAmount)
+                spendableAmount = spendable;
+
+                if (totalExpenses <= spendable)
                 {
                     spendableUsed      = totalExpenses;
                     savingsUsed        = 0;
-                    remainingSpendable = spendableAmount - totalExpenses;
-                    remainingSavings   = threshold;
+                    remainingSpendable = spendable - totalExpenses;
+                    remainingSavings   = savings;
                 }
                 else
                 {
-                    spendableUsed      = spendableAmount;
-                    savingsUsed        = totalExpenses - spendableAmount;
+                    spendableUsed      = spendable;
+                    savingsUsed        = totalExpenses - spendable;
                     remainingSpendable = 0;
-                    remainingSavings   = Math.Max(0, threshold - savingsUsed);
+                    remainingSavings   = Math.Max(0, savings - savingsUsed);
                 }
 
-                budgetStatus = totalExpenses <= spendableAmount * 0.7m ? "On Track"
-                    : totalExpenses <= spendableAmount               ? "Approaching Limit"
-                    : remainingSavings > 0                           ? "Using Savings"
+                budgetStatus = totalExpenses <= spendable * 0.7m ? "On Track"
+                    : totalExpenses <= spendable               ? "Approaching Limit"
+                    : remainingSavings > 0                     ? "Using Savings"
                     : "Overspent";
             }
 
