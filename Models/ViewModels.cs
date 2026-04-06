@@ -12,6 +12,14 @@ namespace ExpenseTracker.Models
         public string? TopCategory { get; set; }
         public int TotalTransactions { get; set; }
         public Budget? Budget { get; set; }
+
+        // Budget breakdown
+        public decimal SpendableAmount { get; set; }
+        public decimal SpendableUsed { get; set; }
+        public decimal SavingsUsed { get; set; }
+        public decimal RemainingSpendable { get; set; }
+        public decimal RemainingSavings { get; set; }
+        public string BudgetStatus { get; set; } = string.Empty;
     }
 
     public class MonthlyTotal

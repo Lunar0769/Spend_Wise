@@ -56,18 +56,55 @@ namespace ExpenseTracker.Controllers
             var topCategory = categoryTotals.OrderByDescending(kv => kv.Value).FirstOrDefault().Key;
             var budget = await _context.Budgets.FirstOrDefaultAsync(b => b.UserId == userId);
 
+            // Budget breakdown
+            decimal spendableAmount = 0, spendableUsed = 0, savingsUsed = 0, remainingSpendable = 0, remainingSavings = 0;
+            string budgetStatus = string.Empty;
+            var totalExpenses = thisMonthExpenses.Sum(e => e.Amount);
+
+            if (budget != null && budget.MonthlyIncome > 0)
+            {
+                var threshold = budget.ThresholdAmount; // savings bucket
+                spendableAmount = budget.MonthlyIncome - threshold;
+
+                if (totalExpenses <= spendableAmount)
+                {
+                    spendableUsed      = totalExpenses;
+                    savingsUsed        = 0;
+                    remainingSpendable = spendableAmount - totalExpenses;
+                    remainingSavings   = threshold;
+                }
+                else
+                {
+                    spendableUsed      = spendableAmount;
+                    savingsUsed        = totalExpenses - spendableAmount;
+                    remainingSpendable = 0;
+                    remainingSavings   = Math.Max(0, threshold - savingsUsed);
+                }
+
+                budgetStatus = totalExpenses <= spendableAmount * 0.7m ? "On Track"
+                    : totalExpenses <= spendableAmount               ? "Approaching Limit"
+                    : remainingSavings > 0                           ? "Using Savings"
+                    : "Overspent";
+            }
+
             var vm = new DashboardViewModel
             {
                 RecentExpenses        = allExpenses.OrderByDescending(e => e.Date).Take(8).ToList(),
-                TotalThisMonth        = thisMonthExpenses.Sum(e => e.Amount),
+                TotalThisMonth        = totalExpenses,
                 TotalThisYear         = thisYearExpenses.Sum(e => e.Amount),
                 TotalAllTime          = allExpenses.Sum(e => e.Amount),
-                AverageDailyThisMonth = daysInMonth > 0 ? thisMonthExpenses.Sum(e => e.Amount) / daysInMonth : 0,
+                AverageDailyThisMonth = daysInMonth > 0 ? totalExpenses / daysInMonth : 0,
                 CategoryTotals        = categoryTotals,
                 MonthlyTotals         = monthlyTotals,
                 TopCategory           = topCategory,
                 TotalTransactions     = allExpenses.Count,
-                Budget                = budget
+                Budget                = budget,
+                SpendableAmount       = spendableAmount,
+                SpendableUsed         = spendableUsed,
+                SavingsUsed           = savingsUsed,
+                RemainingSpendable    = remainingSpendable,
+                RemainingSavings      = remainingSavings,
+                BudgetStatus          = budgetStatus
             };
 
             return View(vm);

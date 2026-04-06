@@ -120,49 +120,67 @@
 
 @if (Model.Budget != null && Model.Budget.MonthlyIncome > 0)
 {
-    var spent      = Model.TotalThisMonth;
-    var income     = Model.Budget.MonthlyIncome;
-    var threshold  = Model.Budget.ThresholdAmount;
-    var pct        = income > 0 ? Math.Min((double)spent / (double)income * 100, 100) : 0;
-    var pctStr     = pct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
-    var remaining  = income - spent;
-    var barColor   = spent >= income ? "var(--danger)" : spent >= threshold ? "var(--warning)" : "var(--success)";
+    var income    = Model.Budget.MonthlyIncome;
+    var threshold = Model.Budget.ThresholdAmount;
+    var total     = income > 0 ? income : 1m;
+
+    // Segment widths as percentages of total income
+    var w1 = (double)(Model.SpendableUsed    / total * 100);
+    var w2 = (double)(Model.SavingsUsed      / total * 100);
+    var w3 = (double)(Model.RemainingSpendable / total * 100);
+    var w4 = (double)(Model.RemainingSavings / total * 100);
+
+    string alertClass = Model.BudgetStatus switch {
+        "On Track"         => "safe",
+        "Approaching Limit"=> "warn",
+        "Using Savings"    => "warn",
+        _                  => "over"
+    };
+    string alertIcon = Model.BudgetStatus switch {
+        "On Track"         => "✅",
+        "Approaching Limit"=> "⚠️",
+        "Using Savings"    => "⚠️",
+        _                  => "🚨"
+    };
+    string alertMsg = Model.BudgetStatus switch {
+        "On Track"          => $"On track — ₹{Model.RemainingSpendable.ToString("N0")} spendable + ₹{Model.RemainingSavings.ToString("N0")} savings remaining.",
+        "Approaching Limit" => $"Approaching spendable limit — ₹{Model.RemainingSpendable.ToString("N0")} left before dipping into savings.",
+        "Using Savings"     => $"Using savings — ₹{Model.SavingsUsed.ToString("N0")} taken from savings. ₹{Model.RemainingSavings.ToString("N0")} savings left.",
+        _                   => $"Overspent — savings exhausted. You've exceeded your budget by ₹{(Model.TotalThisMonth - income).ToString("N0")}."
+    };
 
     <div class="budget-bar-card">
         <div class="budget-bar-header">
             <span class="budget-bar-title">💳 Monthly Budget</span>
             <span class="budget-bar-meta">
                 Threshold: ₹@threshold.ToString("N0") (@Model.Budget.ThresholdPercent% of ₹@income.ToString("N0"))
-                &nbsp;·&nbsp; <a href="/Budget" style="color:var(--primary);font-size:11px">Edit</a>
+                &nbsp;·&nbsp; <a asp-controller="Budget" asp-action="Index" style="color:var(--primary);font-size:11px">Edit</a>
             </span>
         </div>
-        <div class="budget-track">
-            <div class="budget-fill" style="width:@(pctStr)%;background:@barColor"></div>
+        <!-- Segmented progress bar -->
+        <div class="budget-track" style="display:flex;border-radius:8px;overflow:hidden;height:12px">
+            @if (w1 > 0) { <div style="width:@(w1.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%;background:#4F46E5;transition:width 0.4s" title="Spent (Safe): ₹@Model.SpendableUsed.ToString("N0")"></div> }
+            @if (w2 > 0) { <div style="width:@(w2.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%;background:#EF4444;transition:width 0.4s" title="Spent (Savings): ₹@Model.SavingsUsed.ToString("N0")"></div> }
+            @if (w3 > 0) { <div style="width:@(w3.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%;background:rgba(79,70,229,0.15);transition:width 0.4s" title="Remaining Spendable: ₹@Model.RemainingSpendable.ToString("N0")"></div> }
+            @if (w4 > 0) { <div style="width:@(w4.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%;background:rgba(34,197,94,0.2);transition:width 0.4s" title="Protected Savings: ₹@Model.RemainingSavings.ToString("N0")"></div> }
         </div>
-        <div class="budget-labels">
-            <span>Spent: <strong>₹@spent.ToString("N0")</strong></span>
-            <span>@pctStr% used</span>
-            <span>Balance: <strong>₹@remaining.ToString("N0")</strong></span>
+        <!-- Legend -->
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin:8px 0 4px;font-size:11px;color:var(--muted)">
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#4F46E5;margin-right:4px"></span>Spent (Safe) ₹@Model.SpendableUsed.ToString("N0")</span>
+            @if (Model.SavingsUsed > 0) {
+                <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#EF4444;margin-right:4px"></span>Spent (Savings) ₹@Model.SavingsUsed.ToString("N0")</span>
+            }
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(79,70,229,0.3);margin-right:4px"></span>Remaining Spendable ₹@Model.RemainingSpendable.ToString("N0")</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(34,197,94,0.4);margin-right:4px"></span>Protected Savings ₹@Model.RemainingSavings.ToString("N0")</span>
         </div>
-        @if (spent >= income)
-        {
-            <div class="budget-alert over">🚨 Over budget! You've exceeded your monthly income by ₹@((spent - income).ToString("N0")).</div>
-        }
-        else if (spent >= threshold)
-        {
-            <div class="budget-alert warn">⚠️ Approaching limit — you've used @pctStr% of your income. Only ₹@remaining.ToString("N0") left.</div>
-        }
-        else
-        {
-            <div class="budget-alert safe">✅ On track — ₹@remaining.ToString("N0") remaining this month.</div>
-        }
+        <div class="budget-alert @alertClass">@alertIcon @alertMsg</div>
     </div>
 }
 else
 {
     <div class="budget-bar-card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
         <span style="font-size:13px;color:var(--muted)">💡 Set your monthly income to track your budget threshold.</span>
-        <a href="/Budget" class="btn btn-primary btn-sm">Set Budget</a>
+        <a asp-controller="Budget" asp-action="Index" class="btn btn-primary btn-sm">Set Budget</a>
     </div>
 }
 
@@ -187,7 +205,7 @@ else
     <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
             <div class="card-title" style="margin-bottom:0">Recent Expenses</div>
-            <a href="/Expense" class="btn btn-ghost btn-sm">View all →</a>
+            <a asp-controller="Expense" asp-action="Index" class="btn btn-ghost btn-sm">View all →</a>
         </div>
         @if (!Model.RecentExpenses.Any())
         {
