@@ -197,7 +197,7 @@ else
             <span class="chart-title">By Category</span>
             <span class="chart-sub">This month</span>
         </div>
-        <canvas id="categoryChart" height="170"></canvas>
+        <canvas id="categoryChart"></canvas>
     </div>
 </div>
 
@@ -265,53 +265,93 @@ else
     Chart.defaults.color = '#94A3B8';
     Chart.defaults.borderColor = '#E2E8F0';
 
-    // ── Monthly bar chart ──
-    new Chart(document.getElementById('monthlyChart'), {
-        type: 'bar',
-        data: {
-            labels: [@Html.Raw(monthLabels)],
-            datasets: [{
-                data: [@Html.Raw(monthAmounts)],
-                backgroundColor: 'rgba(79,70,229,0.75)',
-                hoverBackgroundColor: 'rgba(79,70,229,1)',
-                borderRadius: 6,
-                borderSkipped: false
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { grid: { color: '#F1F5F9' }, ticks: { callback: v => '₹' + v.toLocaleString() } },
-                x: { grid: { display: false } }
+    // ── Monthly line chart (smooth + glow) ──
+    (function() {
+        const ctx = document.getElementById('monthlyChart');
+        if (!ctx) return;
+
+        // Gradient fill
+        const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 200);
+        gradient.addColorStop(0, 'rgba(79,70,229,0.25)');
+        gradient.addColorStop(1, 'rgba(79,70,229,0)');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [@Html.Raw(monthLabels)],
+                datasets: [{
+                    data: [@Html.Raw(monthAmounts)],
+                    borderColor: '#4F46E5',
+                    backgroundColor: gradient,
+                    borderWidth: 2.5,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#4F46E5',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: { label: ctx => ' ₹' + ctx.parsed.y.toLocaleString('en-IN', {minimumFractionDigits:2}) }
+                    }
+                },
+                scales: {
+                    y: {
+                        grid: { color: '#F1F5F9' },
+                        ticks: { callback: v => '₹' + v.toLocaleString() }
+                    },
+                    x: { grid: { display: false } }
+                }
             }
-        }
-    });
+        });
+    })();
 
     @if (Model.CategoryTotals.Any())
     {
         <text>
-    // ── Category doughnut ──
-    new Chart(document.getElementById('categoryChart'), {
-        type: 'doughnut',
-        data: {
-            labels: [@Html.Raw(catLabels)],
-            datasets: [{
-                data: [@Html.Raw(catAmounts)],
-                backgroundColor: [@Html.Raw(catColors)],
-                borderWidth: 2,
-                borderColor: '#fff',
-                hoverOffset: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            cutout: '70%',
-            plugins: {
-                legend: { position: 'bottom', labels: { boxWidth: 10, padding: 10, font: { size: 11 } } }
+    // ── Category radial-style horizontal bar ──
+    (function() {
+        const ctx = document.getElementById('categoryChart');
+        if (!ctx) return;
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [@Html.Raw(catLabels)],
+                datasets: [{
+                    data: [@Html.Raw(catAmounts)],
+                    backgroundColor: [@Html.Raw(catColors)],
+                    borderRadius: 20,
+                    borderSkipped: false,
+                    barThickness: 10
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: { label: ctx => ' ₹' + ctx.parsed.x.toLocaleString('en-IN', {minimumFractionDigits:2}) }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: '#F1F5F9' },
+                        ticks: { callback: v => '₹' + v.toLocaleString(), font: { size: 10 } }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { font: { size: 11 } }
+                    }
+                }
             }
-        }
-    });
+        });
+    })();
         </text>
     }
 
