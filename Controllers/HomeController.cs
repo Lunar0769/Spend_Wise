@@ -40,12 +40,23 @@ namespace ExpenseTracker.Controllers
                 var month = now.AddMonths(-i);
                 var start = new DateTime(month.Year, month.Month, 1);
                 var end   = start.AddMonths(1);
+                var spent = allExpenses.Where(e => e.Date >= start && e.Date < end).Sum(e => e.Amount);
+                var saved = 0m;
+                if (budget != null && budget.MonthlyIncome > 0)
+                {
+                    var spendable = budget.ThresholdAmount;
+                    var savings   = budget.MonthlyIncome - spendable;
+                    saved = spent <= spendable
+                        ? savings                          // full savings intact
+                        : Math.Max(0, savings - (spent - spendable)); // savings dipped into
+                }
                 monthlyTotals.Add(new MonthlyTotal
                 {
                     Month       = month.ToString("MMM"),
                     Year        = month.Year,
                     MonthNumber = month.Month,
-                    Amount      = allExpenses.Where(e => e.Date >= start && e.Date < end).Sum(e => e.Amount)
+                    Amount      = spent,
+                    Saved       = saved
                 });
             }
 

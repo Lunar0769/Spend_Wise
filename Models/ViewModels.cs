@@ -26,6 +26,7 @@ namespace ExpenseTracker.Models
     {
         public string Month { get; set; } = string.Empty;
         public decimal Amount { get; set; }
+        public decimal Saved { get; set; }
         public int Year { get; set; }
         public int MonthNumber { get; set; }
     }

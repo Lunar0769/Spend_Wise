@@ -4,8 +4,9 @@
     ViewData["Title"] = "Dashboard";
     Layout = "~/Views/Shared/_Layout.cshtml";
 
-    var monthLabels  = string.Join(",", Model.MonthlyTotals.Select(m => $"\"{m.Month}\""));
-    var monthAmounts = string.Join(",", Model.MonthlyTotals.Select(m => ((double)m.Amount).ToString("F2", System.Globalization.CultureInfo.InvariantCulture)));
+    var monthLabels   = string.Join(",", Model.MonthlyTotals.Select(m => $"\"{m.Month}\""));
+    var monthAmounts  = string.Join(",", Model.MonthlyTotals.Select(m => ((double)m.Amount).ToString("F2", System.Globalization.CultureInfo.InvariantCulture)));
+    var monthSavings  = string.Join(",", Model.MonthlyTotals.Select(m => ((double)m.Saved).ToString("F2", System.Globalization.CultureInfo.InvariantCulture)));
     var catLabels    = string.Join(",", Model.CategoryTotals.Keys.Select(k => $"\"{k}\""));
     var catAmounts   = string.Join(",", Model.CategoryTotals.Values.Select(v => ((double)v).ToString("F2", System.Globalization.CultureInfo.InvariantCulture)));
     var catColors    = string.Join(",", Model.CategoryTotals.Keys.Select(k => $"\"{ExpenseCategories.GetColor(k)}\""));
@@ -15,7 +16,7 @@
 <style>
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         gap: 10px;
         margin-bottom: 12px;
     }
@@ -87,10 +88,13 @@
     .f-tag { font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 10px; background: var(--primary-lt); color: var(--primary); }
     .forecast-error { text-align: center; padding: 20px; color: var(--muted); font-size: 13px; }
     @@media (max-width: 1100px) {
-        .stats-grid  { grid-template-columns: repeat(2, 1fr); }
+        .stats-grid  { grid-template-columns: repeat(3, 1fr); }
         .charts-grid { grid-template-columns: 1fr; }
         .bottom-grid { grid-template-columns: 1fr; }
         .forecast-body { grid-template-columns: 1fr; }
+    }
+    @@media (max-width: 640px) {
+        .stats-grid  { grid-template-columns: repeat(2, 1fr); }
     }
 </style>
 }
@@ -112,6 +116,11 @@
         <div class="stat-sub">per day this month</div>
     </div>
     <div class="stat-card" style="--accent-color: var(--success)">
+        <div class="stat-label">Saved This Month</div>
+        <div class="stat-value">₹@Model.RemainingSavings.ToString("N0")</div>
+        <div class="stat-sub">protected savings</div>
+    </div>
+    <div class="stat-card" style="--accent-color: #0EA5E9">
         <div class="stat-label">Transactions</div>
         <div class="stat-value">@Model.TotalTransactions</div>
         <div class="stat-sub">total records</div>
@@ -265,46 +274,63 @@ else
     Chart.defaults.color = '#94A3B8';
     Chart.defaults.borderColor = '#E2E8F0';
 
-    // ── Monthly line chart (smooth + glow) ──
+    // ── Monthly line chart (smooth + glow, expense + savings) ──
     (function() {
         const ctx = document.getElementById('monthlyChart');
         if (!ctx) return;
 
-        // Gradient fill
-        const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 200);
-        gradient.addColorStop(0, 'rgba(79,70,229,0.25)');
-        gradient.addColorStop(1, 'rgba(79,70,229,0)');
+        const gradExp = ctx.getContext('2d').createLinearGradient(0, 0, 0, 200);
+        gradExp.addColorStop(0, 'rgba(79,70,229,0.2)');
+        gradExp.addColorStop(1, 'rgba(79,70,229,0)');
+
+        const gradSav = ctx.getContext('2d').createLinearGradient(0, 0, 0, 200);
+        gradSav.addColorStop(0, 'rgba(34,197,94,0.2)');
+        gradSav.addColorStop(1, 'rgba(34,197,94,0)');
 
         new Chart(ctx, {
             type: 'line',
             data: {
                 labels: [@Html.Raw(monthLabels)],
-                datasets: [{
-                    data: [@Html.Raw(monthAmounts)],
-                    borderColor: '#4F46E5',
-                    backgroundColor: gradient,
-                    borderWidth: 2.5,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#4F46E5',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                    fill: true,
-                    tension: 0.4
-                }]
+                datasets: [
+                    {
+                        label: 'Expenses',
+                        data: [@Html.Raw(monthAmounts)],
+                        borderColor: '#4F46E5',
+                        backgroundColor: gradExp,
+                        borderWidth: 2.5,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#4F46E5',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Saved',
+                        data: [@Html.Raw(monthSavings)],
+                        borderColor: '#22C55E',
+                        backgroundColor: gradSav,
+                        borderWidth: 2.5,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#22C55E',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }
+                ]
             },
             options: {
                 responsive: true,
+                interaction: { mode: 'index', intersect: false },
                 plugins: {
-                    legend: { display: false },
+                    legend: { position: 'top', labels: { boxWidth: 10, padding: 14, font: { size: 11 } } },
                     tooltip: {
-                        callbacks: { label: ctx => ' ₹' + ctx.parsed.y.toLocaleString('en-IN', {minimumFractionDigits:2}) }
+                        callbacks: { label: ctx => ` ₹${ctx.parsed.y.toLocaleString('en-IN', {minimumFractionDigits:2})}` }
                     }
                 },
                 scales: {
-                    y: {
-                        grid: { color: '#F1F5F9' },
-                        ticks: { callback: v => '₹' + v.toLocaleString() }
-                    },
+                    y: { grid: { color: '#F1F5F9' }, ticks: { callback: v => '₹' + v.toLocaleString() } },
                     x: { grid: { display: false } }
                 }
             }
