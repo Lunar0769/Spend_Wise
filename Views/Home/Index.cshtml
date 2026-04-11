@@ -16,7 +16,7 @@
 <style>
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(6, 1fr);
         gap: 10px;
         margin-bottom: 12px;
     }
@@ -95,8 +95,7 @@
     }
     @@media (max-width: 640px) {
         .stats-grid  { grid-template-columns: repeat(2, 1fr); }
-    }
-</style>
+    }</style>
 }
 
 <div class="stats-grid">
@@ -119,6 +118,11 @@
         <div class="stat-label">Saved This Month</div>
         <div class="stat-value">₹@Model.RemainingSavings.ToString("N0")</div>
         <div class="stat-sub">protected savings</div>
+    </div>
+    <div class="stat-card" style="--accent-color: #10B981">
+        <div class="stat-label">Total Saved</div>
+        <div class="stat-value">₹@Model.TotalSavedAllTime.ToString("N0")</div>
+        <div class="stat-sub">all time savings</div>
     </div>
     <div class="stat-card" style="--accent-color: #0EA5E9">
         <div class="stat-label">Transactions</div>

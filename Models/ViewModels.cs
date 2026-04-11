@@ -19,6 +19,7 @@ namespace ExpenseTracker.Models
         public decimal SavingsUsed { get; set; }
         public decimal RemainingSpendable { get; set; }
         public decimal RemainingSavings { get; set; }
+        public decimal TotalSavedAllTime { get; set; }
         public string BudgetStatus { get; set; } = string.Empty;
     }
 

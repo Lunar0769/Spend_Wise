@@ -69,6 +69,7 @@ namespace ExpenseTracker.Controllers
 
             // Budget breakdown
             decimal spendableAmount = 0, spendableUsed = 0, savingsUsed = 0, remainingSpendable = 0, remainingSavings = 0;
+            decimal totalSavedAllTime = 0;
             string budgetStatus = string.Empty;
             var totalExpenses = thisMonthExpenses.Sum(e => e.Amount);
 
@@ -98,6 +99,19 @@ namespace ExpenseTracker.Controllers
                     : totalExpenses <= spendable               ? "Approaching Limit"
                     : remainingSavings > 0                     ? "Using Savings"
                     : "Overspent";
+
+                // Total saved across all months (every month where expenses < spendable, savings bucket was intact)
+                var allMonths = allExpenses
+                    .GroupBy(e => new { e.Date.Year, e.Date.Month })
+                    .Select(g => new { Spent = g.Sum(e => e.Amount) });
+
+                foreach (var m in allMonths)
+                {
+                    var monthlySaved = m.Spent <= spendable
+                        ? (budget.MonthlyIncome - spendable)
+                        : Math.Max(0, (budget.MonthlyIncome - spendable) - (m.Spent - spendable));
+                    totalSavedAllTime += monthlySaved;
+                }
             }
 
             var vm = new DashboardViewModel
@@ -117,6 +131,7 @@ namespace ExpenseTracker.Controllers
                 SavingsUsed           = savingsUsed,
                 RemainingSpendable    = remainingSpendable,
                 RemainingSavings      = remainingSavings,
+                TotalSavedAllTime     = totalSavedAllTime,
                 BudgetStatus          = budgetStatus
             };
 
