@@ -34,6 +34,8 @@ namespace ExpenseTracker.Controllers
             var thisYearExpenses  = allExpenses.Where(e => e.Date >= startOfYear).ToList();
             var daysInMonth = (now - startOfMonth).Days + 1;
 
+            var budget = await _context.Budgets.FirstOrDefaultAsync(b => b.UserId == userId);
+
             var monthlyTotals = new List<MonthlyTotal>();
             for (int i = 5; i >= 0; i--)
             {
@@ -65,7 +67,6 @@ namespace ExpenseTracker.Controllers
                 .ToDictionary(g => g.Key, g => g.Sum(e => e.Amount));
 
             var topCategory = categoryTotals.OrderByDescending(kv => kv.Value).FirstOrDefault().Key;
-            var budget = await _context.Budgets.FirstOrDefaultAsync(b => b.UserId == userId);
 
             // Budget breakdown
             decimal spendableAmount = 0, spendableUsed = 0, savingsUsed = 0, remainingSpendable = 0, remainingSavings = 0;
